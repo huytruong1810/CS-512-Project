@@ -7,7 +7,7 @@ class Generator(nn.Module):
         # model
 
     def forward(self, x):
-        pass
+        return x
 
 
 class Discriminator(nn.Module):
@@ -16,7 +16,7 @@ class Discriminator(nn.Module):
         # model
 
     def forward(self, x):
-        pass
+        return x
 
 
 class GAN:
@@ -84,9 +84,6 @@ class GAN:
         return G_losses, D_losses
 
     def generate_fake(self, quantity):
-        result = []
         with torch.no_grad():
-            for i in range(quantity):
-                result.append(self.netG(self.fixed_noise).detach().cpu())
-        return result
+            return [self.netG(self.fixed_noise).detach().cpu() for _ in range(quantity)]
 

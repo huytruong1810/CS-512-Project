@@ -34,6 +34,7 @@ class GAN:
 
     def trainD(self, fake, real_cpu, label):
         self.netD.zero_grad()
+
         output_real = self.netD(real_cpu).view(-1)
         errD_real = self.criterion(output_real, label)
         errD_real.backward()
@@ -49,7 +50,8 @@ class GAN:
 
     def trainG(self, fake, label):
         self.netG.zero_grad()
-        label.fill_(self.real_label)
+
+        label.fill(self.real_label)
         output = self.netD(fake).view(-1)
         errG = self.criterion(output, label)
         errG.backward()

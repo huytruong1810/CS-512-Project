@@ -5,15 +5,19 @@ from settings import *
 
 if __name__ == '__main__':
     dataloader = data_loader.load()
-    gan = model.GAN(load_saved=True)
-    G_losses, D_losses = gan.train(dataloader)
+    gan = model.GAN()
+    G_losses, D_losses, C_losses = gan.train(dataloader)
 
     plt.figure(figsize=(10, 5))
-    plt.title("Generator and Discriminator Loss During Training")
+    if use_wasserstein:
+        plt.title("Generator and Critic Loss During Training")
+        plt.plot(C_losses, label="C")
+    else:
+        plt.title("Generator and Discriminator Loss During Training")
+        plt.plot(D_losses, label="D")
     plt.plot(G_losses, label="G")
-    plt.plot(D_losses, label="D")
     plt.xlabel("iterations")
-    plt.ylabel("Loss")
+    plt.ylabel("loss")
     plt.legend()
     plt.show()
 

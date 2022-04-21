@@ -23,13 +23,19 @@ torch.manual_seed(0)
 dataroot = "data/flower/"
 G_path = "model/G.pt"
 D_path = "model/D.pt"
+C_path = "model/C.pt"
+
+load_saved = True
 
 workers = 4
 batch_size = 8
-num_epochs = 1000
+num_epochs = 10
 image_size = 64
 num_channels = 3
 z_length = 256
 latent_dim = 64
 
-save_rate = 100
+use_wasserstein = True
+n_critic = 5
+
+save_rate = 1  # save model after each training epoch

@@ -5,7 +5,7 @@ from settings import *
 
 if __name__ == '__main__':
     dataloader = data_loader.load()
-    gan = model.GAN()
+    gan = model.GAN(load_saved=True)
     G_losses, D_losses = gan.train(dataloader)
 
     plt.figure(figsize=(10, 5))
@@ -17,10 +17,9 @@ if __name__ == '__main__':
     plt.legend()
     plt.show()
 
-    # Plot the fake images from the last epoch
     plt.subplot(1, 2, 2)
     plt.axis("off")
     plt.title("Fake Images")
-    plt.imshow(np.transpose(gan.generate_fake(quantity=4)[-1], (1, 2, 0)))
+    plt.imshow(np.transpose(gan.generate_fake(), (1, 2, 0)))
     plt.show()
 

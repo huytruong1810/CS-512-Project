@@ -25,11 +25,11 @@ G_path = "model/G.pt"
 D_path = "model/D.pt"
 C_path = "model/C.pt"
 
-load_saved = True
+load_saved = False
 
 workers = 4
-batch_size = 8
-num_epochs = 10
+batch_size = 16
+num_epochs = 1000
 image_size = 64
 num_channels = 3
 z_length = 256

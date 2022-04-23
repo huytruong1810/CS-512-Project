@@ -30,6 +30,7 @@ load_saved = False
 workers = 4
 batch_size = 16
 num_epochs = 1000
+log_interval = 160
 image_size = 64
 num_channels = 3
 z_length = 256

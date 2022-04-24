@@ -4,6 +4,7 @@ from settings import *
 
 torch.cdist()
 
+
 def weights_init(m):
     classname = m.__class__.__name__
     if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
@@ -30,6 +31,7 @@ class Encoder(nn.Module):
 
     def forward(self, x):
         return self.main(x)
+
 
 class Decoder(nn.Module):
     def __init__(self):
@@ -70,6 +72,14 @@ class Discriminator(Critic):
         )
 
 
+class DiscriminatorSS(Critic):
+    def __init__(self):
+        super().__init__()
+        self.main.append(
+            nn.Sigmoid()  # output needs to be between 0-1
+        )
+
+
 class GAN:
     def __init__(self):
         self.loss = nn.BCELoss()
@@ -86,13 +96,19 @@ class GAN:
         self.netC.apply(weights_init)
         self.optimizerC = optim.AdamW(self.netC.parameters(), lr=1e-4, betas=(0.5, 0.999))
 
+        self.netSS = DiscriminatorSS().to(device)
+        self.netSS.apply(weights_init)
+        self.optimizerSS = optim.AdamW(self.netSS.parameters(), lr=1e-4, betas=(0.5, 0.999))
+
         if load_saved:
             self.netG.load_state_dict(torch.load(G_path))
             self.netD.load_state_dict(torch.load(D_path))
             self.netC.load_state_dict(torch.load(C_path))
+            self.netSS.load_state_dict(torch.load(SS_path))
             self.optimizerG.load_state_dict(torch.load(G_optim_path))
             self.optimizerD.load_state_dict(torch.load(D_optim_path))
             self.optimizerC.load_state_dict(torch.load(C_optim_path))
+            self.optimizerSS.load_state_dict(torch.load(SS_optim_path))
 
     def trainD(self, fake, real):
         self.netD.train()
@@ -106,6 +122,11 @@ class GAN:
         self.optimizerD.step()
 
         return output_real.mean().item(), output_fake.mean().item(), errD.item()
+
+    def trainSS(self, fake, real):
+        self.netSS.train()
+
+        self.optimizerSS.steip()
 
     def gradient_penalty(self, real, fake):
         t = torch.rand(real.size()).to(device)
@@ -152,6 +173,7 @@ class GAN:
         G_losses = []
         D_losses = []
         C_losses = []
+        SS_losses = []
 
         for epoch in range(num_epochs):
             for i, data in enumerate(dataloader, 0):
@@ -199,11 +221,13 @@ class GAN:
                 torch.save(self.netG.state_dict(), G_path)
                 torch.save(self.netD.state_dict(), D_path)
                 torch.save(self.netC.state_dict(), C_path)
+                torch.save(self.netSS.state_dict(), SS_path)
                 torch.save(self.optimizerG.state_dict(), G_optim_path)
                 torch.save(self.optimizerD.state_dict(), D_optim_path)
                 torch.save(self.optimizerC.state_dict(), C_optim_path)
+                torch.save(self.optimizerSS.state_dict(), SS_optim_path)
 
-        return G_losses, D_losses, C_losses
+        return G_losses, D_losses, C_losses, SS_losses
 
     def generate_fake(self, quantity=2):
         self.netG.eval()
@@ -228,3 +252,8 @@ class VAE_GAN(GAN):
         self.netC = Critic().to(device)
         self.netC.apply(weights_init)
         self.optimizerC = optim.AdamW(self.netC.parameters(), lr=1e-4, betas=(0.5, 0.999))
+
+        self.netSS = DiscriminatorSS().to(device)
+        self.netSS.apply(weights_init)
+        self.optimizerSS = optim.AdamW(self.netSS.parameters(), lr=1e-4, betas=(0.5, 0.999))
+

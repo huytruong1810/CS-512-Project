@@ -12,6 +12,9 @@ def weights_init(m):
     elif classname.find('BatchNorm2d') != -1:
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
+    else: # Linear layer for Rotation
+        nn.init.normal_(m.weight.data, 0.0, 0.02)
+
 
 
 class Encoder(nn.Module):
@@ -71,13 +74,27 @@ class Discriminator(Critic):
             nn.Sigmoid()  # output needs to be between 0-1
         )
 
-
-class DiscriminatorSS(Critic):
+class DiscriminatorSS(Encoder):
     def __init__(self):
-        super().__init__()
-        self.main.append(
-            nn.Sigmoid()  # output needs to be between 0-1
+        super(DiscriminatorSS, self).__init__()
+        self.NUM_ROTATIONS = 4
+
+        # Set up the binary real/fake classifier
+        self.bin_class = nn.Sequential(
+            nn.Conv2d(latent_dim * 8, 1, 4, 1, 0, bias=False),
+            nn.Sigmoid()
         )
+
+        # Set up the rotation degree classifier
+        self.rot_class = nn.Sequential(
+            nn.Linear((latent_dim * 8) * 4 * 4, self.NUM_ROTATIONS),
+            nn.Softmax()
+        )
+
+    def forward(self, x):
+        encoder_op = self.main(x)
+        op = torch.cat(self.bin_class(encoder_op), self.rot_class(encoder_op))
+        return op
 
 
 class GAN:
@@ -96,8 +113,11 @@ class GAN:
         self.netC.apply(weights_init)
         self.optimizerC = optim.AdamW(self.netC.parameters(), lr=1e-4, betas=(0.5, 0.999))
 
+
         self.netSS = DiscriminatorSS().to(device)
+        self.netSSR = DiscriminatorSS().to(device)
         self.netSS.apply(weights_init)
+        self.netSSR.apply(weights_init)
         self.optimizerSS = optim.AdamW(self.netSS.parameters(), lr=1e-4, betas=(0.5, 0.999))
 
         if load_saved:
@@ -125,8 +145,18 @@ class GAN:
 
     def trainSS(self, fake, real):
         self.netSS.train()
+        self.optimizerSS.zero_grad(set_to_none=True)
 
-        self.optimizerSS.steip()
+        output_real = self.netSS(real).flatten()
+        output_fake = self.netSS(fake).flatten()
+        errSS = self.loss(output_real, torch.ones(self.b_size)) + self.loss(output_fake, torch.zeros(self.b_size))
+        # + nn.CrossEntropyLoss(rotate_images(output_real), rotate_labels)
+
+        errSS.backward()
+
+        self.optimizerSS.step()
+
+        return output_real.mean().item(), output_fake.mean().item(), errSS.item()
 
     def gradient_penalty(self, real, fake):
         t = torch.rand(real.size()).to(device)

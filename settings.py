@@ -24,10 +24,12 @@ dataroot = "data/flower/"
 G_path = "model/G.pt"
 D_path = "model/D.pt"
 C_path = "model/C.pt"
+SS_path = "model/SS.pt"
 
 G_optim_path = "model/optimG.pt"
 D_optim_path = "model/optimD.pt"
 C_optim_path = "model/optimC.pt"
+SS_optim_path = "model/optimSS.pt"
 
 load_saved = True
 

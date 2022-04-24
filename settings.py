@@ -32,8 +32,9 @@ C_optim_path = "model/optimC.pt"
 load_saved = True
 
 workers = 4
-batch_size = 128
-num_epochs = 10
+batch_size = 16
+num_epochs = 1000
+log_interval = 160
 image_size = 64
 num_channels = 3
 z_length = 256

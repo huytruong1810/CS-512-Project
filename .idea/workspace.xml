@@ -2,9 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="49b71973-88fb-4544-b06c-0e5db83448ce" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/res.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/VAE_GAN.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/GAN.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/model/C.pt" beforeDir="false" afterPath="$PROJECT_DIR$/model/C.pt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/model/D.pt" beforeDir="false" afterPath="$PROJECT_DIR$/model/D.pt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/model/G.pt" beforeDir="false" afterPath="$PROJECT_DIR$/model/G.pt" afterDir="false" />

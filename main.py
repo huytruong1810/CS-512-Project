@@ -1,11 +1,11 @@
 import data_loader
-import model
+from GAN import GAN
 from settings import *
 
 
 if __name__ == '__main__':
     dataloader = data_loader.load()
-    gan = model.GAN()
+    gan = GAN()
     G_losses, D_losses, C_losses = gan.train(dataloader)
 
     plt.figure(figsize=(10, 5))

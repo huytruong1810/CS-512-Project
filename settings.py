@@ -41,8 +41,11 @@ image_size = 64
 num_channels = 3
 z_length = 256
 latent_dim = 64
+num_rotations = 4
+rotations = {0, 90, 180, 270}
 
-use_wasserstein = True
+use_wasserstein = False
+use_selfsupervised = True
 n_critic = 5
 
 n_vae = 5

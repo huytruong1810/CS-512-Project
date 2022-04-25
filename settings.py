@@ -21,6 +21,7 @@ random.seed(0)
 torch.manual_seed(0)
 
 dataroot = "data/flower/"
+
 G_path = "model/G.pt"
 D_path = "model/D.pt"
 C_path = "model/C.pt"
@@ -31,15 +32,23 @@ D_optim_path = "model/optimD.pt"
 C_optim_path = "model/optimC.pt"
 SS_optim_path = "model/optimSS.pt"
 
+VAE_path = "model/VAE.pt"
+VAE_G_path = "model/VAE_G.pt"
+VAE_C_path = "model/VAE_C.pt"
+
+VAE_optim_path = "model/optimVAE.pt"
+VAE_G_optim_path = "model/optimVAE_G.pt"
+VAE_C_optim_path = "model/optimVAE_C.pt"
+
 load_saved = True
 
 workers = 4
 batch_size = 16
-num_epochs = 1000
+num_epochs = 0
 log_interval = 160
 image_size = 64
 num_channels = 3
-z_length = 256
+z_length = 128
 latent_dim = 64
 num_rotations = 4
 rotations = {0, 90, 180, 270}

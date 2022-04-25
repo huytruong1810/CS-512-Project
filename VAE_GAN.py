@@ -1,3 +1,5 @@
+import torch
+
 from GAN import Encoder, Decoder, Critic, weights_init
 from settings import *
 
@@ -8,30 +10,33 @@ class VAE(nn.Module):
         self.encoder = Encoder()
         self.encoder.main.append(
             nn.Flatten(),
-            # latent_dim*4*8*8
+            # latent_dim*8*4*4
         )
         self.encoder.main.append(
-            nn.Linear(latent_dim * 4 * 8 * 8, z_length)
-            # z_length
+            # note that output of encoder is mu and log(var) for each latent dimension
+            nn.Linear(latent_dim * 8 * 4 * 4, z_length * 2)
+            # z_length*2
         )
         self.decoder = Decoder()
+        self.log_scale = nn.Parameter(torch.Tensor([0.0]))
 
     def forward(self, x):
         # encoding
-        z = self.encoder(x)
-        mu = z[:, 0, :]  # the first feature values as mean
-        log_var = z[:, 1, :]  # the other feature values as variance
-        std = torch.exp(0.5 * log_var)  # standard deviation
-        z = mu + (torch.randn_like(std) * std)  # sampling as if coming from the input space
+        mu_var = self.encoder(x).view(-1, 2, z_length)  # batch_size x 2 x z_length
+        mu = mu_var[:, 0, :]
+        log_var = mu_var[:, 1, :]
+        # retrieve standard deviation from log(var)
+        std = torch.exp(0.5 * log_var)
+        # constraint data to come from N(mu, std)
+        z = mu + (torch.randn_like(std) * std)
         # decoding
-        out = self.decoder(z)
-        return out, mu, log_var, z
+        z = z[None, None].permute((2, 3, 1, 0))  # batch_size x z_length x 1 x 1
+        x_hat = self.decoder(z)
+        return x_hat, mu, log_var, z
 
 
 class VAE_GAN:
     def __init__(self):
-        self.rec_loss = nn.BCELoss()
-
         self.vae = VAE().to(device)
         self.vae.apply(weights_init)
         self.optimizerVAE = optim.AdamW(self.vae.parameters(), lr=1e-4, betas=(0.5, 0.999))
@@ -44,12 +49,22 @@ class VAE_GAN:
         self.netC.apply(weights_init)
         self.optimizerC = optim.AdamW(self.netC.parameters(), lr=1e-4, betas=(0.5, 0.999))
 
+        if load_saved:
+            self.vae.load_state_dict(torch.load(VAE_path))
+            self.netG.load_state_dict(torch.load(VAE_G_path))
+            self.netC.load_state_dict(torch.load(VAE_C_path))
+            self.optimizerVAE.load_state_dict(torch.load(VAE_optim_path))
+            self.optimizerG.load_state_dict(torch.load(VAE_G_optim_path))
+            self.optimizerC.load_state_dict(torch.load(VAE_C_optim_path))
+
     def trainVAE(self, x):
         self.vae.train()
         self.optimizerVAE.zero_grad(set_to_none=True)
 
-        rec, mu, log_var, _ = self.vae(x)
-        errVAE = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp()) + self.rec_loss(rec, x)
+        x_hat, mu, log_var, _ = self.vae(x)
+        kl = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
+        rec_loss = torch.distributions.Normal(x_hat, torch.exp(self.vae.log_scale)).log_prob(x).sum(dim=(1, 2, 3))
+        errVAE = (kl - rec_loss).mean()
         errVAE.backward()
 
         self.optimizerVAE.step()
@@ -108,24 +123,65 @@ class VAE_GAN:
                 for j in range(n_vae):
                     errVAE = self.trainVAE(real)
                     VAE_losses.append(errVAE)
-                    print(f'Epoch {epoch}/Batch {i}/Iteration {j}:\t'
-                          f'Loss VAE: {round(errVAE, 3)}')
+                    if i % log_interval == 0:
+                        print(f'Epoch {epoch}/Batch {i}/Iteration {j}:\t'
+                              f'Loss VAE: {round(errVAE, 3)}')
 
-                _, _, _, z = self.vae(real)
+                with torch.no_grad():
+                    _, _, _, z = self.vae(real)
                 fake = self.netG(z)
 
                 # train critic
                 for j in range(n_critic):
                     C_x, C_G_x, errC = self.trainC(fake.detach(), real)
                     C_losses.append(errC)
-                    print(f'Epoch {epoch}/Batch {i}/Iteration {j}:\t'
-                          f'Loss C: {round(errC, 3)}\t'
-                          f'C(x): {round(C_x, 3)}\t'
-                          f'C(G(z)): {round(C_G_x, 3)}')
+                    if i % log_interval == 0:
+                        print(f'Epoch {epoch}/Batch {i}/Iteration {j}:\t'
+                              f'Loss C: {round(errC, 3)}\t'
+                              f'C(x): {round(C_x, 3)}\t'
+                              f'C(G(z)): {round(C_G_x, 3)}')
 
                 # train generator
                 errG = self.trainG(fake)
                 G_losses.append(errG)
+
+                # if i % log_interval == 0:
+                #     plt.clf()
+                #     plt.subplot(1, 2, 2)
+                #     plt.axis("off")
+                #     plt.title("Fake Images")
+                #     plt.imshow(np.transpose(self.generate_fake(), (1, 2, 0)))
+                #     plt.show()
+                #
+                #     plt.clf()
+                #     plt.subplot(1, 2, 2)
+                #     plt.axis("off")
+                #     plt.title("Reconstructed Images")
+                #     plt.imshow(np.transpose(self.reconstruct(real), (1, 2, 0)))
+                #     plt.show()
+
                 print(f'Epoch {epoch}/Batch {i}:\t'
                       f'Loss G: {round(errG, 3)}')
+
+            if epoch % save_rate == 0:
+                torch.save(self.vae.state_dict(), VAE_path)
+                torch.save(self.netG.state_dict(), VAE_G_path)
+                torch.save(self.netC.state_dict(), VAE_C_path)
+                torch.save(self.optimizerVAE.state_dict(), VAE_optim_path)
+                torch.save(self.optimizerG.state_dict(), VAE_G_optim_path)
+                torch.save(self.optimizerC.state_dict(), VAE_C_optim_path)
+
+        return G_losses, VAE_losses, C_losses
+
+    def reconstruct(self, data):
+        self.vae.eval()
+        with torch.no_grad():
+            recon, _, _, _ = self.vae(data)
+        return vutils.make_grid(recon, padding=2, normalize=True)
+
+    def generate_fake(self, quantity=32):
+        self.netG.eval()
+        with torch.no_grad():
+            fake = self.netG(torch.randn(quantity, z_length, 1, 1, device=device))
+        return vutils.make_grid(fake, padding=2, normalize=True)
 

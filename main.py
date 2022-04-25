@@ -1,12 +1,13 @@
 import data_loader
 from GAN import GAN
+from VAE_GAN import VAE_GAN
 from settings import *
 
 
 if __name__ == '__main__':
     dataloader = data_loader.load()
-    gan = GAN()
-    G_losses, D_losses, C_losses = gan.train(dataloader)
+    model = VAE_GAN()
+    G_losses, D_losses, C_losses = model.train(dataloader)
 
     plt.figure(figsize=(10, 5))
     if use_wasserstein:
@@ -24,6 +25,12 @@ if __name__ == '__main__':
     plt.subplot(1, 2, 2)
     plt.axis("off")
     plt.title("Fake Images")
-    plt.imshow(np.transpose(gan.generate_fake(), (1, 2, 0)))
+    plt.imshow(np.transpose(model.generate_fake(), (1, 2, 0)))
+    plt.show()
+
+    plt.subplot(1, 2, 2)
+    plt.axis("off")
+    plt.title("Reconstructed Images by VAE")
+    plt.imshow(np.transpose(model.reconstruct(next(iter(dataloader))[0]), (1, 2, 0)))
     plt.show()
 

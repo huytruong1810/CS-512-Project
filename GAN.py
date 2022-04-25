@@ -2,7 +2,6 @@ import torch
 from res import DeconvResBlock, ConvResBlock
 from settings import *
 
-torch.cdist()
 
 def weights_init(m):
     classname = m.__class__.__name__
@@ -30,6 +29,7 @@ class Encoder(nn.Module):
 
     def forward(self, x):
         return self.main(x)
+
 
 class Decoder(nn.Module):
     def __init__(self):
@@ -184,16 +184,16 @@ class GAN:
                 errG = self.trainG(fake)
                 G_losses.append(errG)
 
-                if i % log_interval == 0:
-                    plt.clf()
-                    plt.subplot(1, 2, 2)
-                    plt.axis("off")
-                    plt.title("Fake Images")
-                    plt.imshow(np.transpose(self.generate_fake(), (1, 2, 0)))
-                    plt.show()
+                # if i % log_interval == 0:
+                    # plt.clf()
+                    # plt.subplot(1, 2, 2)
+                    # plt.axis("off")
+                    # plt.title("Fake Images")
+                    # plt.imshow(np.transpose(self.generate_fake(), (1, 2, 0)))
+                    # plt.show()
 
-                # print(f'Epoch {epoch}/Batch {i}:\t'
-                #       f'Loss G: {round(errG, 3)}')
+                print(f'Epoch {epoch}/Batch {i}:\t'
+                      f'Loss G: {round(errG, 3)}')
 
             if epoch % save_rate == 0:
                 torch.save(self.netG.state_dict(), G_path)
@@ -205,26 +205,8 @@ class GAN:
 
         return G_losses, D_losses, C_losses
 
-    def generate_fake(self, quantity=2):
+    def generate_fake(self, quantity=32):
         self.netG.eval()
         with torch.no_grad():
-            fake = self.netG(torch.randn(quantity, z_length, 1, 1, device=device)).detach().cpu()
+            fake = self.netG(torch.randn(quantity, z_length, 1, 1, device=device))
         return vutils.make_grid(fake, padding=2, normalize=True)
-
-
-class VAE_GAN(GAN):
-    def __init__(self):
-        super(VAE_GAN, self).__init__()
-        self.loss = nn.BCELoss()
-
-        self.netG = Decoder().to(device)
-        self.netG.apply(weights_init)
-        self.optimizerG = optim.AdamW(self.netG.parameters(), lr=1e-4, betas=(0.5, 0.999))
-
-        self.netD = Discriminator().to(device)
-        self.netD.apply(weights_init)
-        self.optimizerD = optim.AdamW(self.netD.parameters(), lr=1e-4, betas=(0.5, 0.999))
-
-        self.netC = Critic().to(device)
-        self.netC.apply(weights_init)
-        self.optimizerC = optim.AdamW(self.netC.parameters(), lr=1e-4, betas=(0.5, 0.999))

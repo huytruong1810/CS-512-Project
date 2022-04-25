@@ -1,6 +1,8 @@
 import torch
 from res import DeconvResBlock, ConvResBlock
 from settings import *
+import torchvision
+import random
 
 torch.cdist()
 
@@ -77,7 +79,6 @@ class Discriminator(Critic):
 class DiscriminatorSS(Encoder):
     def __init__(self):
         super(DiscriminatorSS, self).__init__()
-        self.NUM_ROTATIONS = 4
 
         # Set up the binary real/fake classifier
         self.bin_class = nn.Sequential(
@@ -87,7 +88,7 @@ class DiscriminatorSS(Encoder):
 
         # Set up the rotation degree classifier
         self.rot_class = nn.Sequential(
-            nn.Linear((latent_dim * 8) * 4 * 4, self.NUM_ROTATIONS),
+            nn.Linear((latent_dim * 8) * 4 * 4, num_rotations),
             nn.Softmax()
         )
 
@@ -115,9 +116,7 @@ class GAN:
 
 
         self.netSS = DiscriminatorSS().to(device)
-        self.netSSR = DiscriminatorSS().to(device)
         self.netSS.apply(weights_init)
-        self.netSSR.apply(weights_init)
         self.optimizerSS = optim.AdamW(self.netSS.parameters(), lr=1e-4, betas=(0.5, 0.999))
 
         if load_saved:
@@ -210,9 +209,23 @@ class GAN:
                 self.b_size = min(batch_size, data[0].size(0))
 
                 real = data[0].to(device)
-                fake = self.netG(torch.randn(self.b_size, z_length, 1, 1, device=device))
 
-                if use_wasserstein:
+                if use_selfsupervised:
+                    fake = self.netG(torch.randn(self.b_size, z_length, 1, 1, device=device))
+                    #real_rotated = rotate_image(real)
+                    #fake_rotated, fake_rotated_label = self.netG(torch.randn(self.b_size, z_length, 1, 1, device=device))
+
+                    # minimize losses for real/fake and rotation classificaitons
+                    SS_x, SS_G_z, errSS = self.trainSS(fake.detach(), real)
+                    D_losses.append(errSS)
+                    if i % log_interval == 0:
+                        print(f'Epoch {epoch}/Batch {i}:\t'
+                              f'Loss D: {round(errSS, 3)}\t'
+                              f'D(x): {round(SS_x, 3)}\t'
+                              f'D(G(z)): {round(SS_G_z, 3)}')
+
+                elif use_wasserstein:
+                    fake = self.netG(torch.randn(self.b_size, z_length, 1, 1, device=device))
                     # maximize C(x) - C(G(z)) for N iterations
                     for j in range(n_critic):
                         C_x, C_G_x, errC = self.trainC(fake.detach(), real)
@@ -223,6 +236,7 @@ class GAN:
                                   f'C(x): {round(C_x, 3)}\t'
                                   f'C(G(z)): {round(C_G_x, 3)}')
                 else:
+                    fake = self.netG(torch.randn(self.b_size, z_length, 1, 1, device=device))
                     # maximize log(D(x)) + log(1 - D(G(z)))
                     D_x, D_G_z, errD = self.trainD(fake.detach(), real)
                     D_losses.append(errD)
@@ -263,6 +277,9 @@ class GAN:
         self.netG.eval()
         with torch.no_grad():
             fake = self.netG(torch.randn(quantity, z_length, 1, 1, device=device)).detach().cpu()
+            # if use_selfsupervised:
+            #     # Might need to change below line
+            #     fake = torchvision.transforms.functional.rotate(fake, random.choice(rotations))
         return vutils.make_grid(fake, padding=2, normalize=True)
 
 

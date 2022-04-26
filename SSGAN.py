@@ -101,6 +101,27 @@ class DiscriminatorSS(Encoder):
         print("ROT OP: ", rot_op.shape)
         return bin_op, rot_op
 
+def rotate_images(images):
+
+    # Rotate image with a certain angle in sub-batches
+    subset_size = batch_size // len(rotations)
+    for idx, angle in enumerate(rotations):
+        images[idx * subset_size: (idx + 1) * subset_size, ...] = \
+        torchvision.transforms.functional.rotate(images[idx*subset_size: (idx+1) * subset_size], angle)
+
+    # Generate corresponding labels
+    labels = torch.tensor([0] * 4 + [1] * 4 + [2] * 4 + [3] * 4)
+    labels = torch.nn.functional.one_hot(labels, num_classes=4)
+
+    # Shuffle batch
+    shuffle_idxs = torch.randperm(batch_size)
+    images = images[shuffle_idxs]
+    labels = labels[shuffle_idxs]
+
+    return images, labels
+
+
+
 
 class GAN:
     def __init__(self):
@@ -218,7 +239,7 @@ class GAN:
                 real = data[0].to(device)
                 if use_selfsupervised:
                     fake = self.netG(torch.randn(self.b_size, z_length, 1, 1, device=device))
-                    #real_rotated = rotate_image(real)
+                    #real_rotated = rotate_images(real)
                     #fake_rotated, fake_rotated_label = self.netG(torch.randn(self.b_size, z_length, 1, 1, device=device))
 
                     # minimize losses for real/fake and rotation classificaitons

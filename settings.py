@@ -13,6 +13,8 @@ import torchvision.utils as vutils
 import numpy as np
 import matplotlib.pyplot as plt
 
+from metrics import FIDScore
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 random.seed(0)
@@ -38,11 +40,14 @@ VAE_Encoder_optim_path = "model/optimVAE_Encoder.pt"
 VAE_G_optim_path = "model/optimVAE_G.pt"
 VAE_C_optim_path = "model/optimVAE_C.pt"
 
+## Initializing FID score here
+fid_score = FIDScore(device)
+
 load_saved = False
 
 workers = 0
 batch_size = 16
-num_epochs = 5
+num_epochs = 1
 log_interval = 160
 image_size = 64
 num_channels = 3
@@ -50,9 +55,12 @@ z_length = 128
 latent_dim = 64
 num_rotations = 4
 rotations = {0, 90, 180, 270}
+log_to_console = False  # Print logs to console
+log_to_wandb = True  # Send logs to wandb
+log_image_freq = 1  # How frequent to log images
 
 use_wasserstein = False
-use_selfsupervised = True
+use_selfsupervised = False
 n_critic = 5
 
 n_vae = 5

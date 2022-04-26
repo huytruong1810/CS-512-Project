@@ -1,8 +1,7 @@
 import torch
-
+import wandb
 from GAN import Encoder, Decoder, Critic, weights_init
 from settings import *
-
 
 class VAE_Encoder(nn.Module):
     def __init__(self):
@@ -105,6 +104,7 @@ class VAE_GAN:
         G_losses = []
         C_losses = []
         ELBO_losses = []
+        training_iter = 0
 
         for epoch in range(num_epochs):
             for i, data in enumerate(dataloader, 0):
@@ -116,46 +116,56 @@ class VAE_GAN:
                 x_hat, C_x_hat, ELBO = self.trainVAE_G(real)
                 ELBO_losses.append(ELBO)
                 G_losses.append(-C_x_hat)
-                print(f'Epoch {epoch}/Batch {i}:\t'
-                      f'ELBO: {round(ELBO, 3)}\t'
-                      f'Loss G: {-C_x_hat}')
+                if log_to_wandb:
+                    wandb.log({"epoch": epoch, "ELBO": ELBO, "Loss G": -C_x_hat, "Training iter": training_iter})
+                if log_to_console:
+                    print(f'Epoch {epoch}/Batch {i}:\t'
+                          f'ELBO: {round(ELBO, 3)}\t'
+                          f'Loss G: {-C_x_hat}')
 
                 # train critic while considering reconstructed x_hat as fake
+                critic_loss = []
                 for j in range(n_critic):
                     C_x, C_G_x, errC = self.trainC(x_hat.detach(), real)
                     C_losses.append(errC)
-                    if i % log_interval == 0:
+                    critic_loss.append(errC)
+                    if log_to_console:
                         print(f'Epoch {epoch}/Batch {i}/Iteration {j}:\t'
                               f'Loss C: {round(errC, 3)}\t'
                               f'C(x): {round(C_x, 3)}\t'
                               f'C(G(z)): {round(C_G_x, 3)}')
 
+                if log_to_wandb:
+                    wandb.log({"epoch": epoch, "Training iter": training_iter, "Loss C": np.mean(critic_loss).item(),
+                               "FID": fid_score(real, x_hat.detach())})
 
+            if epoch % log_image_freq == 0:
+                fake_grid = vutils.make_grid(self.generate_fake(), padding=2, normalize=True)
+                img = wandb.Image(fake_grid.cpu(), caption=f"Epoch: {epoch}")
+                if log_to_wandb:
+                    wandb.log({"epoch": epoch, "fake_images": img})
+                if log_to_console:
+                    plt.subplot(1, 2, 2)
+                    plt.axis("off")
+                    plt.title(f"Epoch: {epoch}")
+                    fake_grid = vutils.make_grid(self.generate_fake(), padding=2, normalize=True)
+                    plt.imshow(np.transpose(fake_grid.cpu(), (1, 2, 0)))
+                    plt.show()
 
-                # if i % log_interval == 0:
-                #     plt.clf()
-                #     plt.subplot(1, 2, 2)
-                #     plt.axis("off")
-                #     plt.title("Fake Images")
-                #     plt.imshow(np.transpose(self.generate_fake(), (1, 2, 0)))
-                #     plt.show()
-                #
-                #     plt.clf()
-                #     plt.subplot(1, 2, 2)
-                #     plt.axis("off")
-                #     plt.title("Reconstructed Images")
-                #     plt.imshow(np.transpose(self.reconstruct(real), (1, 2, 0)))
-                #     plt.show()
+            training_iter += 1
 
             if epoch % save_rate == 0:
-                torch.save(self.encoder.state_dict(), VAE_Encoder_path)
-                torch.save(self.decoderG.state_dict(), VAE_G_path)
-                torch.save(self.netC.state_dict(), VAE_C_path)
-                torch.save(self.optimizerEncoder.state_dict(), VAE_Encoder_optim_path)
-                torch.save(self.optimizerDecoderG.state_dict(), VAE_G_optim_path)
-                torch.save(self.optimizerC.state_dict(), VAE_C_optim_path)
+                self.save_state()
 
         return G_losses, ELBO_losses, C_losses
+
+    def save_state(self):
+        torch.save(self.encoder.state_dict(), VAE_Encoder_path)
+        torch.save(self.decoderG.state_dict(), VAE_G_path)
+        torch.save(self.netC.state_dict(), VAE_C_path)
+        torch.save(self.optimizerEncoder.state_dict(), VAE_Encoder_optim_path)
+        torch.save(self.optimizerDecoderG.state_dict(), VAE_G_optim_path)
+        torch.save(self.optimizerC.state_dict(), VAE_C_optim_path)
 
     def generate_fake(self, quantity=32):
         self.decoderG.eval()

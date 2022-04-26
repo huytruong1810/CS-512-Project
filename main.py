@@ -2,9 +2,10 @@ import data_loader
 from GAN import GAN
 from VAE_GAN import VAE_GAN
 from settings import *
-
+import wandb
 
 if __name__ == '__main__':
+    wandb.init(project="gan-zoo", name="vaegan-flower", group="wandb-log-test")
     dataloader = data_loader.load()
     model = VAE_GAN()
     G_losses, D_losses, C_losses = model.train(dataloader)
@@ -26,5 +27,5 @@ if __name__ == '__main__':
     plt.axis("off")
     plt.title("Fake Images")
     fake_grid = vutils.make_grid(model.generate_fake(), padding=2, normalize=True)
-    plt.imshow(np.transpose(fake_grid, (1, 2, 0)))
+    plt.imshow(np.transpose(fake_grid.cpu(), (1, 2, 0)))
     plt.show()

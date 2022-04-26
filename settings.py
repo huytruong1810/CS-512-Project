@@ -46,8 +46,8 @@ fid_score = FIDScore(device)
 load_saved = False
 
 workers = 0
-batch_size = 16
-num_epochs = 1
+batch_size = 128
+num_epochs = 100
 log_interval = 160
 image_size = 64
 num_channels = 3
@@ -65,4 +65,4 @@ n_critic = 5
 
 n_vae = 5
 
-save_rate = 1  # save model after each training epoch
+save_rate = 10  # save model after each training epoch

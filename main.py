@@ -5,7 +5,7 @@ from settings import *
 import wandb
 
 if __name__ == '__main__':
-    wandb.init(project="gan-zoo", name="vaegan-flower", group="wandb-log-test")
+    wandb.init(project="gan-zoo", name="vaegan-flower-testrun2-bs128", group="wandb-log-test")
     dataloader = data_loader.load()
     model = VAE_GAN()
     G_losses, D_losses, C_losses = model.train(dataloader)

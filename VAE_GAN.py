@@ -2,6 +2,7 @@ import torch
 import wandb
 from GAN import Encoder, Decoder, Critic, weights_init
 from settings import *
+from tqdm import tqdm
 
 class VAE_Encoder(nn.Module):
     def __init__(self):
@@ -106,8 +107,8 @@ class VAE_GAN:
         ELBO_losses = []
         training_iter = 0
 
-        for epoch in range(num_epochs):
-            for i, data in enumerate(dataloader, 0):
+        for epoch in tqdm(range(num_epochs), desc="Epoch"):
+            for i, data in enumerate(tqdm(dataloader, desc="batch"), 0):
                 self.b_size = min(batch_size, data[0].size(0))
 
                 real = data[0].to(device)
@@ -136,19 +137,20 @@ class VAE_GAN:
                               f'C(G(z)): {round(C_G_x, 3)}')
 
                 if log_to_wandb:
-                    wandb.log({"epoch": epoch, "Training iter": training_iter, "Loss C": np.mean(critic_loss).item(),
-                               "FID": fid_score(real, x_hat.detach())})
+                    wandb.log({"epoch": epoch, "Training iter": training_iter, "Loss C": np.mean(critic_loss).item()})
 
             if epoch % log_image_freq == 0:
-                fake_grid = vutils.make_grid(self.generate_fake(), padding=2, normalize=True)
+                fake_grid = vutils.make_grid(self.generate_fake(64), padding=2, normalize=True)
                 img = wandb.Image(fake_grid.cpu(), caption=f"Epoch: {epoch}")
+                fid = fid_score(real, x_hat.detach())
                 if log_to_wandb:
-                    wandb.log({"epoch": epoch, "fake_images": img})
+                    wandb.log({"epoch": epoch, "fake_images": img, "FID": fid})
                 if log_to_console:
+                    print(f'Epoch: {epoch} \tFID: {fid}')
                     plt.subplot(1, 2, 2)
                     plt.axis("off")
                     plt.title(f"Epoch: {epoch}")
-                    fake_grid = vutils.make_grid(self.generate_fake(), padding=2, normalize=True)
+                    fake_grid = vutils.make_grid(self.generate_fake(64), padding=2, normalize=True)
                     plt.imshow(np.transpose(fake_grid.cpu(), (1, 2, 0)))
                     plt.show()
 

@@ -102,7 +102,6 @@ class DiscriminatorSS(Encoder):
         return bin_op, rot_op
 
 def rotate_images(images):
-
     # Rotate image with a certain angle in sub-batches
     subset_size = batch_size // len(rotations)
     for idx, angle in enumerate(rotations):
@@ -111,16 +110,14 @@ def rotate_images(images):
 
     # Generate corresponding labels
     labels = torch.tensor([0] * 4 + [1] * 4 + [2] * 4 + [3] * 4)
-    labels = torch.nn.functional.one_hot(labels, num_classes=4)
+    labels = torch.nn.functional.one_hot(labels, num_classes=4).type(torch.FloatTensor)
 
     # Shuffle batch
     shuffle_idxs = torch.randperm(batch_size)
     images = images[shuffle_idxs]
     labels = labels[shuffle_idxs]
 
-    return images, labels
-
-
+    return (images, labels)
 
 
 class GAN:
@@ -171,13 +168,18 @@ class GAN:
         self.netSS.train()
         self.optimizerSS.zero_grad(set_to_none=True)
 
-        output_real, output_real_rot = self.netSS(real)
-        output_fake, output_fake_rot = self.netSS(fake)
+        real_rotated, real_rotated_labels = real
+        fake_rotated, fake_rotated_labels = fake
+
+        output_real, output_real_rot = self.netSS(real_rotated)
+        output_fake, output_fake_rot = self.netSS(fake_rotated)
+        print("OP PREDICTED ROT: ", output_real_rot.shape)
+        print("OP ROT LABEL: ", real_rotated_labels.shape)
 
         output_real = output_real.flatten()
         output_fake = output_fake.flatten()
-        errSS = self.loss(output_real, torch.ones(self.b_size)) + self.loss(output_fake, torch.zeros(self.b_size))
-        # + nn.CrossEntropyLoss(rotate_images(output_real), rotate_labels)
+        errSS = self.loss(output_real, torch.ones(self.b_size)) + self.loss(output_fake, torch.zeros(self.b_size)) \
+        + nn.CrossEntropyLoss()(output_real_rot, real_rotated_labels)
 
         errSS.backward()
 
@@ -239,11 +241,11 @@ class GAN:
                 real = data[0].to(device)
                 if use_selfsupervised:
                     fake = self.netG(torch.randn(self.b_size, z_length, 1, 1, device=device))
-                    #real_rotated = rotate_images(real)
-                    #fake_rotated, fake_rotated_label = self.netG(torch.randn(self.b_size, z_length, 1, 1, device=device))
+                    real = rotate_images(real)
+                    fake = rotate_images(self.netG(torch.randn(self.b_size, z_length, 1, 1, device=device)))
 
                     # minimize losses for real/fake and rotation classificaitons
-                    SS_x, SS_G_z, errSS = self.trainSS(fake.detach(), real)
+                    SS_x, SS_G_z, errSS = self.trainSS(fake, real)
                     D_losses.append(errSS)
                     if i % log_interval == 0:
                         print(f'Epoch {epoch}/Batch {i}:\t'

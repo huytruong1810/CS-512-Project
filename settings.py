@@ -40,11 +40,11 @@ VAE_optim_path = "model/optimVAE.pt"
 VAE_G_optim_path = "model/optimVAE_G.pt"
 VAE_C_optim_path = "model/optimVAE_C.pt"
 
-load_saved = True
+load_saved = False
 
-workers = 4
+workers = 0
 batch_size = 16
-num_epochs = 0
+num_epochs = 5
 log_interval = 160
 image_size = 64
 num_channels = 3

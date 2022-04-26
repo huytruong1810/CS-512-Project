@@ -3,9 +3,7 @@ from res import DeconvResBlock, ConvResBlock
 from settings import *
 import torchvision
 import random
-
-torch.cdist()
-
+import data_loader
 
 def weights_init(m):
     classname = m.__class__.__name__
@@ -14,7 +12,7 @@ def weights_init(m):
     elif classname.find('BatchNorm2d') != -1:
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
-    else: # Linear layer for Rotation
+    elif isinstance(m, nn.Linear): # Linear layer for Rotation
         nn.init.normal_(m.weight.data, 0.0, 0.02)
 
 
@@ -83,19 +81,25 @@ class DiscriminatorSS(Encoder):
         # Set up the binary real/fake classifier
         self.bin_class = nn.Sequential(
             nn.Conv2d(latent_dim * 8, 1, 4, 1, 0, bias=False),
+            nn.Flatten(),
             nn.Sigmoid()
         )
 
         # Set up the rotation degree classifier
         self.rot_class = nn.Sequential(
+            nn.Flatten(),
             nn.Linear((latent_dim * 8) * 4 * 4, num_rotations),
             nn.Softmax()
         )
 
     def forward(self, x):
         encoder_op = self.main(x)
-        op = torch.cat(self.bin_class(encoder_op), self.rot_class(encoder_op))
-        return op
+        print(encoder_op.shape)
+        bin_op = self.bin_class(encoder_op)
+        rot_op = self.rot_class(encoder_op)
+        print("BIN OP: ", bin_op.shape)
+        print("ROT OP: ", rot_op.shape)
+        return bin_op, rot_op
 
 
 class GAN:
@@ -146,8 +150,11 @@ class GAN:
         self.netSS.train()
         self.optimizerSS.zero_grad(set_to_none=True)
 
-        output_real = self.netSS(real).flatten()
-        output_fake = self.netSS(fake).flatten()
+        output_real, output_real_rot = self.netSS(real)
+        output_fake, output_fake_rot = self.netSS(fake)
+
+        output_real = output_real.flatten()
+        output_fake = output_fake.flatten()
         errSS = self.loss(output_real, torch.ones(self.b_size)) + self.loss(output_fake, torch.zeros(self.b_size))
         # + nn.CrossEntropyLoss(rotate_images(output_real), rotate_labels)
 
@@ -209,7 +216,6 @@ class GAN:
                 self.b_size = min(batch_size, data[0].size(0))
 
                 real = data[0].to(device)
-
                 if use_selfsupervised:
                     fake = self.netG(torch.randn(self.b_size, z_length, 1, 1, device=device))
                     #real_rotated = rotate_image(real)
@@ -277,6 +283,7 @@ class GAN:
         self.netG.eval()
         with torch.no_grad():
             fake = self.netG(torch.randn(quantity, z_length, 1, 1, device=device)).detach().cpu()
+            print(fake.shape)
             # if use_selfsupervised:
             #     # Might need to change below line
             #     fake = torchvision.transforms.functional.rotate(fake, random.choice(rotations))
@@ -304,3 +311,5 @@ class VAE_GAN(GAN):
         self.netSS.apply(weights_init)
         self.optimizerSS = optim.AdamW(self.netSS.parameters(), lr=1e-4, betas=(0.5, 0.999))
 
+ssgan = GAN()
+ssgan.train(data_loader.load())

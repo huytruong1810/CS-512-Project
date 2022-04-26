@@ -308,7 +308,7 @@ class GAN:
             fake = self.netG(torch.randn(quantity, z_length, 1, 1, device=device)).detach().cpu()
             if use_selfsupervised:
                 fake, _ = rotate_images(fake)
-        return vutils.make_grid(fake, padding=2, normalize=True)
+        return fake
 
 
 class VAE_GAN(GAN):

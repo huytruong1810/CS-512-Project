@@ -25,6 +25,6 @@ if __name__ == '__main__':
     plt.subplot(1, 2, 2)
     plt.axis("off")
     plt.title("Fake Images")
-    plt.imshow(np.transpose(model.generate_fake(), (1, 2, 0)))
+    fake_grid = vutils.make_grid(model.generate_fake(), padding=2, normalize=True)
+    plt.imshow(np.transpose(fake_grid, (1, 2, 0)))
     plt.show()
-

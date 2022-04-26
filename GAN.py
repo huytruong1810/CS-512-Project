@@ -209,4 +209,4 @@ class GAN:
         self.netG.eval()
         with torch.no_grad():
             fake = self.netG(torch.randn(quantity, z_length, 1, 1, device=device))
-        return vutils.make_grid(fake, padding=2, normalize=True)
+        return fake

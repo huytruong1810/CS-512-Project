@@ -32,11 +32,11 @@ D_optim_path = "model/optimD.pt"
 C_optim_path = "model/optimC.pt"
 SS_optim_path = "model/optimSS.pt"
 
-VAE_path = "model/VAE.pt"
+VAE_Encoder_path = "model/VAE_Encoder.pt"
 VAE_G_path = "model/VAE_G.pt"
 VAE_C_path = "model/VAE_C.pt"
 
-VAE_optim_path = "model/optimVAE.pt"
+VAE_Encoder_optim_path = "model/optimVAE_Encoder.pt"
 VAE_G_optim_path = "model/optimVAE_G.pt"
 VAE_C_optim_path = "model/optimVAE_C.pt"
 

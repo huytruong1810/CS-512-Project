@@ -2,16 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="49b71973-88fb-4544-b06c-0e5db83448ce" name="Changes" comment="Changes">
+      <change beforePath="$PROJECT_DIR$/.idea/CS-512-Project.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/CS-512-Project.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GAN.py" beforeDir="false" afterPath="$PROJECT_DIR$/GAN.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/VAE_GAN.py" beforeDir="false" afterPath="$PROJECT_DIR$/VAE_GAN.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/model/C.pt" beforeDir="false" afterPath="$PROJECT_DIR$/model/C.pt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/model/D.pt" beforeDir="false" afterPath="$PROJECT_DIR$/model/D.pt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/model/G.pt" beforeDir="false" afterPath="$PROJECT_DIR$/model/G.pt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/model/optimC.pt" beforeDir="false" afterPath="$PROJECT_DIR$/model/optimC.pt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/model/optimG.pt" beforeDir="false" afterPath="$PROJECT_DIR$/model/optimG.pt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/res.py" beforeDir="false" afterPath="$PROJECT_DIR$/res.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/settings.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -34,6 +29,7 @@
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RunManager">
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">

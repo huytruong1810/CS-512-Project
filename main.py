@@ -28,9 +28,3 @@ if __name__ == '__main__':
     plt.imshow(np.transpose(model.generate_fake(), (1, 2, 0)))
     plt.show()
 
-    plt.subplot(1, 2, 2)
-    plt.axis("off")
-    plt.title("Reconstructed Images by VAE")
-    plt.imshow(np.transpose(model.reconstruct(next(iter(dataloader))[0]), (1, 2, 0)))
-    plt.show()
-

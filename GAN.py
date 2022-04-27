@@ -153,8 +153,8 @@ class GAN:
         D_losses = []
         C_losses = []
 
-        for epoch in range(num_epochs):
-            for i, data in enumerate(dataloader, 0):
+        for epoch in tqdm(range(num_epochs), desc="Epoch"):
+            for i, data in enumerate(tqdm(dataloader, desc="Batch", position=0, leave=True), 0):
                 self.b_size = min(batch_size, data[0].size(0))
 
                 real = data[0].to(device)
@@ -165,7 +165,7 @@ class GAN:
                     for j in range(n_critic):
                         C_x, C_G_x, errC = self.trainC(fake.detach(), real)
                         C_losses.append(errC)
-                        if i % log_interval == 0:
+                        if log_to_console:
                             print(f'Epoch {epoch}/Batch {i}/Iteration {j}:\t'
                                   f'Loss C: {round(errC, 3)}\t'
                                   f'C(x): {round(C_x, 3)}\t'
@@ -174,7 +174,7 @@ class GAN:
                     # maximize log(D(x)) + log(1 - D(G(z)))
                     D_x, D_G_z, errD = self.trainD(fake.detach(), real)
                     D_losses.append(errD)
-                    if i % log_interval == 0:
+                    if log_to_console:
                         print(f'Epoch {epoch}/Batch {i}:\t'
                               f'Loss D: {round(errD, 3)}\t'
                               f'D(x): {round(D_x, 3)}\t'
@@ -184,6 +184,13 @@ class GAN:
                 errG = self.trainG(fake)
                 G_losses.append(errG)
 
+                if log_to_wandb:
+                    if use_wasserstein:
+                        wandb.log({"epoch": epoch, "Training iter": training_iter, "Loss G": errG, "Loss C": np.mean(critic_loss).item()})
+                    else:
+                        wandb.log({"epoch": epoch, "Training iter": training_iter, "Loss G": errG, "Loss C": errD})
+
+
                 # if i % log_interval == 0:
                     # plt.clf()
                     # plt.subplot(1, 2, 2)
@@ -192,8 +199,20 @@ class GAN:
                     # plt.imshow(np.transpose(self.generate_fake(), (1, 2, 0)))
                     # plt.show()
 
-                print(f'Epoch {epoch}/Batch {i}:\t'
-                      f'Loss G: {round(errG, 3)}')
+                if epoch % log_image_freq == 0:
+                    fake_grid = vutils.make_grid(self.generate_fake(64), padding=2, normalize=True)
+                    img = wandb.Image(fake_grid.cpu(), caption=f"Epoch: {epoch}")
+                    fid = fid_score(real, fake.detach())
+                    if log_to_wandb:
+                        wandb.log({"epoch": epoch, "fake_images": img, "FID": fid})
+                    if log_to_console:
+                        print(f'Epoch: {epoch} \tFID: {fid}')
+                        plt.subplot(1, 2, 2)
+                        plt.axis("off")
+                        plt.title(f"Epoch: {epoch}")
+                        fake_grid = vutils.make_grid(self.generate_fake(64), padding=2, normalize=True)
+                        plt.imshow(np.transpose(fake_grid.cpu(), (1, 2, 0)))
+                        plt.show()
 
             if epoch % save_rate == 0:
                 torch.save(self.netG.state_dict(), G_path)

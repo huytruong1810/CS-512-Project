@@ -6,7 +6,7 @@ from settings import *
 import wandb
 
 if __name__ == '__main__':
-    wandb.init(project="gan-zoo", name="ssgan-flower-testrun2-bs64", group="wandb-log-test")
+    wandb.init(project="gan-zoo", name="ssgan-flower-testrun3-bs64", group="wandb-log-test")
     dataloader = data_loader.load()
     model = GAN()
     G_losses, D_losses, C_losses = model.train(dataloader)

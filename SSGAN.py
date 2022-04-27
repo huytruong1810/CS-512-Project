@@ -4,6 +4,8 @@ from settings import *
 import torchvision
 import random
 import data_loader
+import wandb
+from tqdm import tqdm
 
 def weights_init(m):
     classname = m.__class__.__name__
@@ -100,13 +102,16 @@ class DiscriminatorSS(Encoder):
 
 def rotate_images(images):
     # Rotate image with a certain angle in sub-batches
-    subset_size = batch_size // len(rotations)
-    rotated_images = torch.zeros_like(images).to(device)  # new variable to avoid in-place error
+    # batch_rotations = np.random.choice(rotations, images.size(0))
+    subset_size = images.size(0) // len(rotations)
+    # rotated_images = torch.zeros_like(images).to(device)  # new variable to avoid in-place error
 
+    rotated_images = []
     for idx, angle in enumerate(rotations):
-        rotated_images[idx * subset_size: (idx + 1) * subset_size, ...] = \
-        torchvision.transforms.functional.rotate(images[idx*subset_size: (idx+1) * subset_size], angle)
+        # rotated_images[idx * subset_size: (idx + 1) * subset_size, ...] = \
+        rotated_images.append(torchvision.transforms.functional.rotate(images[idx*subset_size: (idx+1) * subset_size], angle))
 
+    rotated_images = torch.cat(rotated_images)
     # Generate corresponding labels
     labels = torch.tensor([0] * subset_size + [1] * subset_size + [2] * subset_size + [3] * subset_size)
     labels = torch.nn.functional.one_hot(labels, num_classes=4).type(torch.FloatTensor)
@@ -236,8 +241,10 @@ class GAN:
         C_losses = []
         SS_losses = []
 
-        for epoch in range(num_epochs):
-            for i, data in enumerate(dataloader, 0):
+        training_iter = 0
+
+        for epoch in tqdm(range(num_epochs), desc="Epoch", position=0, leave=True):
+            for i, data in enumerate(tqdm(dataloader, desc="Epoch", position=0, leave=True), 0):
                 self.b_size = min(batch_size, data[0].size(0))
 
                 real_ = data[0].to(device)
@@ -275,6 +282,8 @@ class GAN:
                         fake_grid = vutils.make_grid(self.generate_fake(64), padding=2, normalize=True)
                         plt.imshow(np.transpose(fake_grid.cpu(), (1, 2, 0)))
                         plt.show()
+
+                training_iter += 1
 
 
             if epoch % save_rate == 0:

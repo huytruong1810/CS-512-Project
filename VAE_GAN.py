@@ -134,7 +134,7 @@ class VAE_GAN:
         training_iter = 0
 
         for epoch in tqdm(range(num_epochs), desc="Epoch"):
-            for i, data in enumerate(tqdm(dataloader, desc="batch"), 0):
+            for i, data in enumerate(tqdm(dataloader, desc="Batch", position=0, leave=True), 0):
                 self.b_size = min(batch_size, data[0].size(0))
 
                 real = data[0].to(device)

@@ -1,0 +1,7 @@
+
+.idea
+__pycache__
+tests/.pytest_cache
+tests/.pytest_cache/*
+data/nft_processed/*
+wandb/*

@@ -46,8 +46,8 @@ fid_score = FIDScore(device)
 load_saved = False
 
 workers = 0
-batch_size = 128
-num_epochs = 100
+batch_size = 64
+num_epochs = 10
 log_interval = 160
 image_size = 64
 num_channels = 3
@@ -59,8 +59,9 @@ log_to_console = False  # Print logs to console
 log_to_wandb = True  # Send logs to wandb
 log_image_freq = 1  # How frequent to log images
 
-use_wasserstein = False
-use_selfsupervised = False
+use_wasserstein = True
+use_selfsupervised = True
+use_sigmavae = False
 n_critic = 5
 
 n_vae = 5

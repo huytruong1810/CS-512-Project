@@ -1,13 +1,14 @@
 import data_loader
 from GAN import GAN
 from VAE_GAN import VAE_GAN
+from SSGAN import GAN
 from settings import *
 import wandb
 
 if __name__ == '__main__':
-    wandb.init(project="gan-zoo", name="vaegan-flower-testrun2-bs128", group="wandb-log-test")
+    wandb.init(project="gan-zoo", name="ssgan-flower-testrun2-bs64", group="wandb-log-test")
     dataloader = data_loader.load()
-    model = VAE_GAN()
+    model = GAN()
     G_losses, D_losses, C_losses = model.train(dataloader)
 
     plt.figure(figsize=(10, 5))

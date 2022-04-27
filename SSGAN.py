@@ -101,20 +101,20 @@ class DiscriminatorSS(Encoder):
 def rotate_images(images):
     # Rotate image with a certain angle in sub-batches
     subset_size = batch_size // len(rotations)
-    rotated_images = torch.zeros_like(images)  # new variable to avoid in-place error
+    rotated_images = torch.zeros_like(images).to(device)  # new variable to avoid in-place error
 
     for idx, angle in enumerate(rotations):
         rotated_images[idx * subset_size: (idx + 1) * subset_size, ...] = \
         torchvision.transforms.functional.rotate(images[idx*subset_size: (idx+1) * subset_size], angle)
 
     # Generate corresponding labels
-    labels = torch.tensor([0] * 4 + [1] * 4 + [2] * 4 + [3] * 4)
+    labels = torch.tensor([0] * subset_size + [1] * subset_size + [2] * subset_size + [3] * subset_size)
     labels = torch.nn.functional.one_hot(labels, num_classes=4).type(torch.FloatTensor)
 
     # Shuffle batch
     shuffle_idxs = torch.randperm(batch_size)
     shuffled_rotated_images = rotated_images[shuffle_idxs]
-    shuffled_labels = labels[shuffle_idxs]
+    shuffled_labels = labels[shuffle_idxs].to(device)
 
     return (shuffled_rotated_images, shuffled_labels)
 
@@ -181,7 +181,7 @@ class GAN:
         output_fake = output_fake.flatten()
 
         # Compute loss
-        errSS = self.loss(output_real, torch.ones(self.b_size)) + self.loss(output_fake, torch.zeros(self.b_size)) \
+        errSS = self.loss(output_real, torch.ones(self.b_size, device=device)) + self.loss(output_fake, torch.zeros(self.b_size, device=device)) \
         + cross_entropy_loss(output_real_rot, real_rotated_labels)
 
         # Backpropagate loss and perform weight update
@@ -241,53 +241,40 @@ class GAN:
                 self.b_size = min(batch_size, data[0].size(0))
 
                 real_ = data[0].to(device)
-                if use_selfsupervised:
-                    # We break it down here so that other components can extract these values
-                    real, real_label = rotate_images(real_)
-                    fake, fake_label = rotate_images(self.netG(torch.randn(self.b_size, z_length, 1, 1, device=device)))
+                # We break it down here so that other components can extract these values
+                real, real_label = rotate_images(real_)
+                fake, fake_label = rotate_images(self.netG(torch.randn(self.b_size, z_length, 1, 1, device=device)))
 
-                    # Minimize losses for real/fake and rotation classificaitons
-                    SS_x, SS_G_z, errSS = self.trainSS((fake, fake_label), (real, real_label))
-                    D_losses.append(errSS)
-                    if i % log_interval == 0:
-                        print(f'Epoch {epoch}/Batch {i}:\t'
-                              f'Loss D: {round(errSS, 3)}\t'
-                              f'D(x): {round(SS_x, 3)}\t'
-                              f'D(G(z)): {round(SS_G_z, 3)}')
-
-                elif use_wasserstein:
-                    fake = self.netG(torch.randn(self.b_size, z_length, 1, 1, device=device))
-                    # maximize C(x) - C(G(z)) for N iterations
-                    for j in range(n_critic):
-                        C_x, C_G_x, errC = self.trainC(fake.detach(), real)
-                        C_losses.append(errC)
-                        if i % log_interval == 0:
-                            print(f'Epoch {epoch}/Batch {i}/Iteration {j}:\t'
-                                  f'Loss C: {round(errC, 3)}\t'
-                                  f'C(x): {round(C_x, 3)}\t'
-                                  f'C(G(z)): {round(C_G_x, 3)}')
-                else:
-                    fake = self.netG(torch.randn(self.b_size, z_length, 1, 1, device=device))
-                    # maximize log(D(x)) + log(1 - D(G(z)))
-                    D_x, D_G_z, errD = self.trainD(fake.detach(), real)
-                    D_losses.append(errD)
-                    if i % log_interval == 0:
-                        print(f'Epoch {epoch}/Batch {i}:\t'
-                              f'Loss D: {round(errD, 3)}\t'
-                              f'D(x): {round(D_x, 3)}\t'
-                              f'D(G(z)): {round(D_G_z, 3)}')
+                # Minimize losses for real/fake and rotation classificaitons
+                SS_x, SS_G_z, errSS = self.trainSS((fake, fake_label), (real, real_label))
+                D_losses.append(errSS)
+                if log_to_console:
+                    print(f'Epoch {epoch}/Batch {i}:\t'
+                          f'Loss D: {round(errSS, 3)}\t'
+                          f'D(x): {round(SS_x, 3)}\t'
+                          f'D(G(z)): {round(SS_G_z, 3)}')
 
                 # maximize log(D(G(z))) or D(G(z)) if use wasserstein loss
                 errG = self.trainG(fake)
                 G_losses.append(errG)
 
-                if i % log_interval == 0:
-                    plt.clf()
-                    plt.subplot(1, 2, 2)
-                    plt.axis("off")
-                    plt.title("Fake Images")
-                    plt.imshow(np.transpose(self.generate_fake(), (1, 2, 0)))
-                    plt.show()
+                if log_to_wandb:
+                    wandb.log({"epoch": epoch, "Loss G": errG, "Loss C": errSS, "Training iter": training_iter})
+
+                if epoch % log_image_freq == 0:
+                    fake_grid = vutils.make_grid(self.generate_fake(64), padding=2, normalize=True)
+                    img = wandb.Image(fake_grid.cpu(), caption=f"Epoch: {epoch}")
+                    fid = fid_score(real, fake.detach())
+                    if log_to_wandb:
+                        wandb.log({"epoch": epoch, "fake_images": img, "FID": fid})
+                    if log_to_console:
+                        print(f'Epoch: {epoch} \tFID: {fid}')
+                        plt.subplot(1, 2, 2)
+                        plt.axis("off")
+                        plt.title(f"Epoch: {epoch}")
+                        fake_grid = vutils.make_grid(self.generate_fake(64), padding=2, normalize=True)
+                        plt.imshow(np.transpose(fake_grid.cpu(), (1, 2, 0)))
+                        plt.show()
 
 
             if epoch % save_rate == 0:
@@ -305,9 +292,9 @@ class GAN:
     def generate_fake(self, quantity=batch_size):
         self.netG.eval()
         with torch.no_grad():
-            fake = self.netG(torch.randn(quantity, z_length, 1, 1, device=device)).detach().cpu()
-            if use_selfsupervised:
-                fake, _ = rotate_images(fake)
+            fake = self.netG(torch.randn(quantity, z_length, 1, 1, device=device)).detach()
+            # if use_selfsupervised:
+            fake, _ = rotate_images(fake)
         return fake
 
 
@@ -331,6 +318,3 @@ class VAE_GAN(GAN):
         self.netSS = DiscriminatorSS().to(device)
         self.netSS.apply(weights_init)
         self.optimizerSS = optim.AdamW(self.netSS.parameters(), lr=1e-4, betas=(0.5, 0.999))
-
-ssgan = GAN()
-ssgan.train(data_loader.load())

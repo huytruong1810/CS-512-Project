@@ -3,6 +3,12 @@ import wandb
 from GAN import Encoder, Decoder, Critic, weights_init
 from settings import *
 from tqdm import tqdm
+import torch.nn.functional as F
+
+
+def softclip(tensor, min):
+    return min + F.softplus(tensor - min)
+
 
 class VAE_Encoder(nn.Module):
     def __init__(self):
@@ -44,6 +50,10 @@ class VAE_GAN:
         self.netC.apply(weights_init)
         self.optimizerC = optim.AdamW(self.netC.parameters(), lr=1e-4, betas=(0.5, 0.999))
 
+        self.log_sigma = 0
+        if use_sigmavae:
+            self.log_sigma = torch.nn.Parameter(torch.full((1,), 0.)[0], requires_grad=True)
+
         if load_saved:
             self.encoder.load_state_dict(torch.load(VAE_Encoder_path))
             self.decoderG.load_state_dict(torch.load(VAE_G_path))
@@ -51,6 +61,16 @@ class VAE_GAN:
             self.optimizerEncoder.load_state_dict(torch.load(VAE_Encoder_optim_path))
             self.optimizerDecoderG.load_state_dict(torch.load(VAE_G_optim_path))
             self.optimizerC.load_state_dict(torch.load(VAE_C_optim_path))
+
+    @staticmethod
+    def gaussian_nll(mu, log_sigma, x):
+        return 0.5 * torch.pow((x - mu) / log_sigma.exp(), 2) + log_sigma + 0.5 * np.log(2 * np.pi)
+
+    def reconstruction_loss(self, x_hat, x):
+        log_sigma = softclip(self.log_sigma, -6)
+        rec = self.gaussian_nll(x_hat, log_sigma, x).sum()
+
+        return rec
 
     def trainVAE_G(self, x):
         self.encoder.train()
@@ -61,13 +81,19 @@ class VAE_GAN:
         mu, log_var, z = self.encoder(x)
         x_hat = self.decoderG(z)  # is fake and a reconstruction of x
         kl = - 0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
-        rec = torch.distributions.Normal(x_hat, torch.exp(self.encoder.log_scale)).log_prob(x).sum(dim=(1, 2, 3))
 
         C_x_hat = self.netC(x_hat).flatten().mean()
-        ELBO = (kl - rec).mean()
 
-        # minimize ELBO and maximize fake score by C
-        (ELBO - C_x_hat).backward()
+        if use_sigmavae:
+            rec = self.reconstruction_loss(x_hat, x)
+            ELBO = (rec + kl).mean()
+        else:
+            rec = torch.distributions.Normal(x_hat, torch.exp(self.encoder.log_scale)).log_prob(x).sum(dim=(1, 2, 3))
+            ELBO = (kl - rec).mean()
+            # minimize ELBO and maximize fake score by C
+
+        loss = (ELBO - C_x_hat)
+        loss.backward()
 
         self.optimizerEncoder.step()
         self.optimizerDecoderG.step()
@@ -169,7 +195,7 @@ class VAE_GAN:
         torch.save(self.optimizerDecoderG.state_dict(), VAE_G_optim_path)
         torch.save(self.optimizerC.state_dict(), VAE_C_optim_path)
 
-    def generate_fake(self, quantity=32):
+    def generate_fake(self, quantity=batch_size):
         self.decoderG.eval()
         with torch.no_grad():
             fake = self.decoderG(torch.randn(quantity, z_length, 1, 1, device=device))

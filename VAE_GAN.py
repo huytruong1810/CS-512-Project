@@ -4,7 +4,7 @@ from GAN import Encoder, Decoder, Critic, weights_init
 from settings import *
 from tqdm import tqdm
 import torch.nn.functional as F
-
+import data_loader
 
 def softclip(tensor, min):
     return min + F.softplus(tensor - min)
@@ -84,7 +84,10 @@ class VAE_GAN:
 
         C_x_hat = self.netC(x_hat).flatten().mean()
 
-        if use_sigmavae:
+        if use_betavae:
+            rec = torch.distributions.Normal(x_hat, torch.exp(self.encoder.log_scale)).log_prob(x).sum(dim=(1, 2, 3))
+            ELBO = (kl - beta * rec).mean()
+        elif use_sigmavae:
             rec = self.reconstruction_loss(x_hat, x)
             ELBO = (rec + kl).mean()
         else:

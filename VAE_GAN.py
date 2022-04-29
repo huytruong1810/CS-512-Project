@@ -136,8 +136,8 @@ class VAE_GAN:
         ELBO_losses = []
         training_iter = 0
 
-        for epoch in tqdm(range(num_epochs), desc="Epoch"):
-            for i, data in enumerate(tqdm(dataloader, desc="Batch", position=0, leave=True), 0):
+        for epoch in tqdm(range(num_epochs+1), total=num_epochs, desc="Epoch", position=0, leave=True):
+            for i, data in enumerate(dataloader, 0):
                 self.b_size = min(batch_size, data[0].size(0))
 
                 real = data[0].to(device)

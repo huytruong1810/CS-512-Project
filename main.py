@@ -6,9 +6,9 @@ from settings import *
 import wandb
 
 if __name__ == '__main__':
-    wandb.init(project="gan-zoo", name="ssgan-flower-testrun3-bs64", group="wandb-log-test")
+    wandb.init(project="gan-zoo", name="sigmavaegan-flower-bs64", group="1000-run")
     dataloader = data_loader.load()
-    model = GAN()
+    model = VAE_GAN()
     G_losses, D_losses, C_losses = model.train(dataloader)
 
     plt.figure(figsize=(10, 5))
